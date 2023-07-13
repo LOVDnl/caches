@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Created  : 2023-07-07
+# Modified : 2023-07-12
+
 # Syncs caches with two remote servers.
 # This script should be run from our local machine.
 
@@ -15,7 +18,7 @@ do
         exit 1;
     fi;
 
-    rsync -qav "ifokkema@${HOST}:/home/ifokkema/git/caches/NC_cache.txt" \
+    rsync -aq "ifokkema@${HOST}:/home/ifokkema/git/caches/NC_cache.txt" \
                                ":/home/ifokkema/git/caches/mapping_cache.txt" \
           "/www/git/caches/${RAND}";
     if [ $? -ne 0 ];
@@ -172,7 +175,7 @@ fi;
 echo "Pushing caches to remote servers...";
 for HOST in kg-web01 web01;
 do
-    rsync -qav                     "/www/git/caches/NC_cache.txt" \
+    rsync -aq                      "/www/git/caches/NC_cache.txt" \
                                    "/www/git/caches/mapping_cache.txt" \
         "ifokkema@${HOST}:/home/ifokkema/git/caches/";
     if [ $? -ne 0 ];
