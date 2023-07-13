@@ -18,8 +18,8 @@ do
         exit 1;
     fi;
 
-    rsync -aq "ifokkema@${HOST}:/home/ifokkema/git/caches/NC_cache.txt" \
-                               ":/home/ifokkema/git/caches/mapping_cache.txt" \
+    rsync -aq "${HOST}:/home/${USER}/git/caches/NC_cache.txt" \
+                     ":/home/${USER}/git/caches/mapping_cache.txt" \
           "/www/git/caches/${RAND}";
     if [ $? -ne 0 ];
     then
@@ -177,7 +177,7 @@ for HOST in kg-web01 web01;
 do
     rsync -aq                      "/www/git/caches/NC_cache.txt" \
                                    "/www/git/caches/mapping_cache.txt" \
-        "ifokkema@${HOST}:/home/ifokkema/git/caches/";
+       "${HOST}:/home/${USER}/git/caches/";
     if [ $? -ne 0 ];
     then
         echo "Couldn't push caches to ${HOST}.";
