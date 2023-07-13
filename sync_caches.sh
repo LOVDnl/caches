@@ -6,12 +6,13 @@
 # Syncs caches with two remote servers.
 # This script should be run from our local machine.
 
+DIR="$(dirname $0)";
 echo "Retrieving remote caches...";
 for HOST in kg-web01 web01;
 do
     # First, retrieve caches.
     RAND="sync_$(echo $RANDOM | md5sum | cut -b 1-10)";
-    mkdir $RAND;
+    mkdir "${DIR}/${RAND}";
     if [ $? -ne 0 ];
     then
         echo "Couldn't create temp directory $RAND.";
@@ -20,7 +21,7 @@ do
 
     rsync -aq "${HOST}:/home/${USER}/git/caches/NC_cache.txt" \
                      ":/home/${USER}/git/caches/mapping_cache.txt" \
-          "/www/git/caches/${RAND}";
+                     "${DIR}/${RAND}";
     if [ $? -ne 0 ];
     then
         echo "Couldn't download caches from ${HOST}.";
@@ -36,12 +37,12 @@ echo "";
 
 # Now, clean caches.
 echo "Cleaning NC cache...";
-FILES=$(find /www/git/caches -name NC_cache.txt);
-cat $FILES | sort | uniq > NC_cache.new.txt;
+FILES=$(find "${DIR}" -name NC_cache.txt);
+cat $FILES | sort | uniq > "${DIR}/NC_cache.new.txt";
 
 # The new cache is allowed to be slightly longer or slightly shorter than the original cache.
-OLD=$(cat NC_cache.txt | wc -l);
-NEW=$(cat NC_cache.new.txt | wc -l);
+OLD=$(cat "${DIR}/NC_cache.txt" | wc -l);
+NEW=$(cat "${DIR}/NC_cache.new.txt" | wc -l);
 DIFF=$(calc -dp ${NEW}00 / $OLD | cut -d . -f 1);
 
 if [ "${DIFF}" -ge 99 ] && [ "${DIFF}" -le 101 ];
@@ -52,14 +53,15 @@ else
     exit 3;
 fi;
 
-mv -f NC_cache.new.txt NC_cache.txt;
+mv -f "${DIR}/NC_cache.new.txt" "${DIR}/NC_cache.txt";
 if [ $? -ne 0 ];
 then
     echo "Couldn't overwrite the new cache file.";
     exit 4;
 fi;
 
-echo "$FILES" | grep -v caches/NC | xargs rm;
+# grep needs an -F in case DIR is "./".
+echo "$FILES" | grep -vF "${DIR}/NC" | xargs rm;
 if [ $? -ne 0 ];
 then
     echo "Couldn't delete temp files.";
@@ -73,22 +75,22 @@ echo "";
 
 
 # Clean the mapping cache, multiple times if needed.
-FILES=$(find /www/git/caches -name mapping_cache.txt);
-cat $FILES | sort | uniq > mapping_cache.sorted.txt;
+FILES=$(find "${DIR}" -name mapping_cache.txt);
+cat $FILES | sort | uniq > "${DIR}/mapping_cache.sorted.txt";
 
 while (true);
 do
     echo "Cleaning mapping cache...";
     # First, find all the repeated variants.
-    cut -f 1 mapping_cache.sorted.txt | uniq -c | grep -vE "^\s+1\s" | awk '{print $2}' > tmp.repeated_vars.txt;
+    cut -f 1 "${DIR}/mapping_cache.sorted.txt" | uniq -c | grep -vE "^\s+1\s" | awk '{print $2}' > "${DIR}/tmp.repeated_vars.txt";
 
     echo -n "Repeated vars: ";
-    cat tmp.repeated_vars.txt | wc -l;
+    cat "${DIR}/tmp.repeated_vars.txt" | wc -l;
 
     # Then, for each repeated variant, try to be intelligent about which one to toss.
-    cat tmp.repeated_vars.txt | while IFS='' read -r variant;
+    cat "${DIR}/tmp.repeated_vars.txt" | while IFS='' read -r variant;
     do
-        matches=$(grep -m2 "${variant}\s" mapping_cache.sorted.txt);
+        matches=$(grep -m2 "${variant}\s" "${DIR}/mapping_cache.sorted.txt");
         if [ $(echo "${matches}" | grep -v VV | wc -l) != "0" ];
         then
             # Remove the one that doesn't have an VV mapping.
@@ -99,21 +101,21 @@ do
             # So, both have VV. Toss the one without the numberConversion.
             echo "${matches}" | grep -v numberConversion;
         fi
-    done > tmp.lines_to_be_deleted.txt
+    done > "${DIR}/tmp.lines_to_be_deleted.txt";
 
     echo -n "Lines to be deleted: ";
-    COUNT=$(cat tmp.lines_to_be_deleted.txt | wc -l);
+    COUNT=$(cat "${DIR}/tmp.lines_to_be_deleted.txt" | wc -l);
     echo $COUNT;
 
     # Check...
     if [ $COUNT -gt 0 ];
     then
         # Finally, take the mapping cache and remove these lines.
-        comm -2 -3 mapping_cache.sorted.txt tmp.lines_to_be_deleted.txt > mapping_cache.new.txt
+        comm -2 -3 "${DIR}/mapping_cache.sorted.txt" "${DIR}/tmp.lines_to_be_deleted.txt" > "${DIR}/mapping_cache.new.txt";
 
         # The new cache is allowed to be slightly longer or slightly shorter than the original cache.
-        OLD=$(cat mapping_cache.txt | wc -l);
-        NEW=$(cat mapping_cache.new.txt | wc -l);
+        OLD=$(cat "${DIR}/mapping_cache.txt" | wc -l);
+        NEW=$(cat "${DIR}/mapping_cache.new.txt" | wc -l);
         DIFF=$(calc -dp ${NEW}00 / $OLD | cut -d . -f 1);
 
         if [ "${DIFF}" -ge 99 ] && [ "${DIFF}" -le 101 ];
@@ -125,7 +127,7 @@ do
         fi;
 
         # Overwrite the cache.
-        mv -f mapping_cache.new.txt mapping_cache.txt
+        mv -f "${DIR}/mapping_cache.new.txt" "${DIR}/mapping_cache.txt";
         if [ $? -ne 0 ];
         then
             echo "Couldn't overwrite the new cache file.";
@@ -134,7 +136,7 @@ do
     fi;
 
     # Clean up.
-    rm mapping_cache.sorted.txt tmp.repeated_vars.txt tmp.lines_to_be_deleted.txt
+    rm "${DIR}/mapping_cache.sorted.txt" "${DIR}/tmp.repeated_vars.txt" "${DIR}/tmp.lines_to_be_deleted.txt";
 
     if [ $COUNT -eq 0 ];
     then
@@ -142,11 +144,12 @@ do
         break;
     else
         # We'll have to go another round.
-        cp -p mapping_cache.txt mapping_cache.sorted.txt
+        cp -p "${DIR}/mapping_cache.txt" "${DIR}/mapping_cache.sorted.txt";
     fi;
 done;
 
-echo "$FILES" | grep -v caches/mapping | xargs rm;
+# grep needs an -F in case DIR is "./".
+echo "$FILES" | grep -vF "${DIR}/mapping" | xargs rm;
 if [ $? -ne 0 ];
 then
   echo "Couldn't delete temp files.";
@@ -160,7 +163,7 @@ echo "";
 
 
 # We should now be done, clean up the temp directories.
-find /www/git/caches -type d -empty -name "sync_??????????" | xargs rmdir;
+find "${DIR}" -type d -empty -name "sync_??????????" | xargs rmdir;
 if [ $? -ne 0 ];
 then
   echo "Couldn't delete temp directories.";
@@ -175,8 +178,8 @@ fi;
 echo "Pushing caches to remote servers...";
 for HOST in kg-web01 web01;
 do
-    rsync -aq                      "/www/git/caches/NC_cache.txt" \
-                                   "/www/git/caches/mapping_cache.txt" \
+    rsync -aq "${DIR}/NC_cache.txt" \
+              "${DIR}/mapping_cache.txt" \
        "${HOST}:/home/${USER}/git/caches/";
     if [ $? -ne 0 ];
     then
