@@ -1,10 +1,16 @@
 #!/bin/bash
 
 # Created  : 2023-07-07
-# Modified : 2023-07-12
+# Modified : 2023-10-05
 
 # Syncs caches with two remote servers.
 # This script should be run from our local machine.
+
+if [ "${USER}" == "" ];
+then
+    # Running through cron.
+    USER=$(whoami);
+fi;
 
 DIR="$(dirname $0)";
 echo "Retrieving remote caches...";
