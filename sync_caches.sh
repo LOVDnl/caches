@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Created  : 2023-07-07
-# Modified : 2023-10-05
+# Modified : 2024-10-11
 
 # Syncs caches with two remote servers.
 # This script should be run from our local machine.
@@ -103,9 +103,18 @@ do
             # We assume here, that we have verified the cache and
             #  therefore *ALL* variants should have the VV method.
             echo "${matches}" | grep -v VV;
-        else
-            # So, both have VV. Toss the one without the numberConversion.
+        elif [ "$(echo "${matches}" | grep numberConversion | wc -l)" -eq "1" ];
+        then
+            # So, both have VV, and only one has numberConversion. Toss the one without the numberConversion.
             echo "${matches}" | grep -v numberConversion;
+        else
+            # This can be problematic. I once had this, when I had manually edited a line with VV.
+            # We then ended up with two lines with VV here, that were different, and both got removed.
+            # Prevent issues by showing the user when this happens.
+            echo "Warning: Can't decide between which lines to keep. I will remove both lines." >&2;
+            echo "Re-add whatever line you wish to keep to the cleaned mapping cache file." >&2;
+            echo "${matches}" >&2;
+            echo "${matches}";
         fi
     done > "${DIR}/tmp.lines_to_be_deleted.txt";
 
